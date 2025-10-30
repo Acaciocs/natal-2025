@@ -8,10 +8,15 @@ on:
 
 permissions:
   contents: write
-  issues: read
+  issues: write
 
 env:
-  PAGES_URL: https://acaciocs.github.io/natal-2025/
+  # 🔧 Troque pela URL do SEU GitHub Pages
+  PAGES_URL: https://SEU_USUARIO.github.io/natal-familia-2025/
+
+concurrency:
+  group: data-json
+  cancel-in-progress: false
 
 jobs:
   add:
@@ -24,74 +29,137 @@ jobs:
         id: run
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const issue_number = context.payload.issue ? context.payload.issue.number
-                                  : context.payload.comment ? context.payload.issue.number
-                                  : null;
-            if (!issue_number) { core.setFailed('Sem número da issue.'); return; }
-            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
-            const labels = issue.labels.map(l => (typeof l === 'string' ? l : l.name));
-            if (!labels.includes('add-payment')) { core.setFailed('Falta label add-payment.'); return; }
-            const body = issue.body || '';
-            // Extrai bloco de linhas (tudo)
-            const lines = body.split(/\r?\n/).map(s => s.trim()).filter(Boolean).filter(s => !s.startsWith('#'));
-            if (!fs.existsSync('data.json')) { core.setFailed('data.json não encontrado no repo.'); return; }
-            const data = JSON.parse(fs.readFileSync('data.json','utf8'));
-            const norm = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+
+            const issue_number = context.payload.issue?.number;
+            if (!issue_number) {
+              core.setFailed('Não identifiquei o número da issue.');
+              return;
+            }
+
+            // Carrega a issue completa
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+            });
+
+            // Verifica label obrigatório
+            const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name);
+            if (!labels.includes('add-payment')) {
+              core.setFailed('Falta o label obrigatório "add-payment" nesta issue.');
+              return;
+            }
+
+            // data.json precisa existir
+            if (!fs.existsSync('data.json')) {
+              core.setFailed('data.json não encontrado na raiz do repositório.');
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+
+            const norm = s => (s || '')
+              .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase().trim();
+
             const validCats = new Set(['entrada20','restante80','comesBebes','decoracao']);
+
+            // Coleta linhas do corpo (aceita com ou sem bloco de código)
+            const text = (issue.body || '').replace(/\r/g, '');
+            let codeBlock = null;
+            let m = text.match(/```(?:[a-z]*)\n([\s\S]*?)```/i);
+            if (m && m[1]) {
+              codeBlock = m[1];
+            }
+            const source = codeBlock || text;
+
+            const lines = source
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean)
+              .filter(s => !s.startsWith('#'))
+              .filter(s => s.includes('|'));
+
             let applied = [];
-            for (const raw of lines){
-              if (!raw.includes('|')) continue;
-              const [a,b,c] = raw.split('|').map(x => (x||'').trim());
-              if (!a || !b || !c) continue;
-              const cat = b;
+            for (const raw of lines) {
+              const parts = raw.split('|').map(x => (x || '').trim());
+              if (parts.length < 3) { applied.push(`❌ Formato inválido: ${raw}`); continue; }
+
+              const idOrName = parts[0];
+              const cat = parts[1];
+              let valStr = parts.slice(2).join('|'); // permite valor com '|', se alguém errar
+              valStr = valStr.replace(',', '.');
+
               if (!validCats.has(cat)) { applied.push(`❌ Categoria inválida: ${cat} (${raw})`); continue; }
-              let valor = c.replace(',','.');
-              valor = Number(valor);
-              if (!isFinite(valor)) { applied.push(`❌ Valor inválido: ${c} (${raw})`); continue; }
+
+              const valor = Number(valStr);
+              if (!isFinite(valor)) { applied.push(`❌ Valor inválido: ${valStr} (${raw})`); continue; }
+
+              // Localiza participante por id OU por nome (exata, depois contém)
               let p = null;
-              if (/^\d+$/.test(a)){ // id
-                const id = Number(a);
-                p = data.participants.find(x => x.id === id);
-              } else { // nome (ignora acentos)
-                const key = norm(a);
-                p = data.participants.find(x => norm(x.nome) === key);
-                if (!p) { // tenta contém
-                  p = data.participants.find(x => norm(x.nome).includes(key));
-                }
+              if (/^\d+$/.test(idOrName)) {
+                const id = Number(idOrName);
+                p = (data.participants || []).find(x => x.id === id);
+              } else {
+                const key = norm(idOrName);
+                p = (data.participants || []).find(x => norm(x.nome) === key);
+                if (!p) p = (data.participants || []).find(x => norm(x.nome).includes(key));
               }
-              if (!p){ applied.push(`❌ Participante não encontrado: ${a}`); continue; }
-              if (!p.pagamentos) p.pagamentos = {entrada20:0,restante80:0,comesBebes:0,decoracao:0};
-              p.pagamentos[cat] = Number((p.pagamentos[cat]||0) + valor);
+              if (!p) { applied.push(`❌ Participante não encontrado: ${idOrName}`); continue; }
+
+              // Garante objeto pagamentos
+              if (!p.pagamentos) {
+                p.pagamentos = {entrada20:0,restante80:0,comesBebes:0,decoracao:0};
+              }
+              p.pagamentos[cat] = Number((p.pagamentos[cat] || 0) + valor);
               applied.push(`✅ ${p.nome} • ${cat} += ${valor.toFixed(2)}`);
             }
+
+            // Salva de volta
             fs.writeFileSync('data.json', JSON.stringify(data, null, 2), 'utf8');
             core.setOutput('applied', applied.join('\n'));
 
-      - name: Commit & push
+      - name: Commit & Push
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data.json
           if git diff --cached --quiet; then
-            echo "Nada a commitar."
+            echo "Nada a commitar (data.json não mudou)."
           else
-            git commit -m "chore(payments): applied via issue"
+            git commit -m "chore(payments): applied via issue #${{ github.event.issue.number }}"
             git push
           fi
 
       - name: Comentar resultado na issue
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          applied: ${{ steps.run.outputs.applied }}
           script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const issue_number = context.payload.issue ? context.payload.issue.number
-                                  : context.payload.comment ? context.payload.issue.number
-                                  : null;
-            const out = core.getInput('result') || '';
-            const body = `### Resultado\n${steps.run.outputs.applied || '(sem linhas válidas)'}\n\nAcompanhar: ${process.env.PAGES_URL}`;
-            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            const issue_number = context.payload.issue?.number;
+            const applied = core.getInput('applied') || '(sem linhas válidas)';
+            const body = `### Resultado\n${applied}\n\nAcompanhar: ${process.env.PAGES_URL}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });
+
+      - name: Comentar falha (se houver)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = context.payload.issue?.number;
+            const body = `❌ Falhou ao aplicar pagamentos.\nConfira os logs em **Actions**, corrija a issue e edite novamente.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });

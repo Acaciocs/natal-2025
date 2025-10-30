@@ -8,75 +8,125 @@ on:
 
 permissions:
   contents: write
-  issues: read
+  issues: write
 
 env:
-  PAGES_URL: https://acaciocs.github.io/natal-2025/
+  # 🔧 Troque pela URL do SEU GitHub Pages
+  PAGES_URL: https://SEU_USUARIO.github.io/natal-familia-2025/
+
+concurrency:
+  group: data-json
+  cancel-in-progress: false
 
 jobs:
   apply:
     runs-on: ubuntu-latest
     steps:
-      - name: Checar repositório
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Extrair JSON da issue e salvar como data.json
         id: parse
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const issue_number = context.payload.issue ? context.payload.issue.number
-                                  : context.payload.comment ? context.payload.issue.number
-                                  : null;
-            if (!issue_number) { core.setFailed('Sem número da issue.'); return; }
-            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
-            const labels = issue.labels.map(l => (typeof l === 'string' ? l : l.name));
-            if (!labels.includes('admin-update')) { core.setFailed('Falta label admin-update.'); return; }
-            const body = issue.body || '';
-            const m = body.match(/```json\s*([\s\S]*?)\s*```/i);
-            if (!m) { core.setFailed('Cole seu JSON entre ```json ... ```'); return; }
-            let obj;
-            try { obj = JSON.parse(m[1]); } catch (e) { core.setFailed('JSON inválido: '+e.message); return; }
-            if (!obj.eventInfo || !obj.costs || !obj.participants) { core.setFailed('Faltam chaves: eventInfo, costs, participants.'); return; }
-            fs.writeFileSync('data.json', JSON.stringify(obj, null, 2), 'utf8');
 
-      - name: Commit & push
+            // Número da issue (vale para issues.* e issue_comment.*)
+            const issue_number = context.payload.issue?.number;
+            if (!issue_number) {
+              core.setFailed('Não identifiquei o número da issue.');
+              return;
+            }
+
+            // Carrega a issue completa
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+            });
+
+            // Verifica label obrigatório
+            const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name);
+            if (!labels.includes('admin-update')) {
+              core.setFailed('Falta o label obrigatório "admin-update" nesta issue.');
+              return;
+            }
+
+            // Tenta extrair bloco ```json ... ```
+            const body = issue.body || '';
+            let jsonText = null;
+
+            // 1) bloco ```json ... ```
+            let m = body.match(/```json\s*([\s\S]*?)\s*```/i);
+            if (m && m[1]) jsonText = m[1];
+
+            // 2) fallback: bloco ``` ... ```
+            if (!jsonText) {
+              m = body.match(/```\s*([\s\S]*?)\s*```/);
+              if (m && m[1]) jsonText = m[1];
+            }
+
+            // 3) fallback: body inteiro (se o usuário colou sem cercar)
+            if (!jsonText) jsonText = body.trim();
+
+            let obj;
+            try {
+              obj = JSON.parse(jsonText);
+            } catch (e) {
+              core.setFailed('JSON inválido. Dica: coloque entre ```json ... ```.\nErro: ' + e.message);
+              return;
+            }
+
+            // Valida chaves básicas
+            if (!obj.eventInfo || !obj.costs || !obj.participants) {
+              core.setFailed('JSON precisa conter as chaves: eventInfo, costs, participants.');
+              return;
+            }
+
+            // Escreve data.json
+            fs.writeFileSync('data.json', JSON.stringify(obj, null, 2), 'utf8');
+            core.info('data.json escrito com sucesso.');
+
+      - name: Commit & Push
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data.json
           if git diff --cached --quiet; then
-            echo "Nada a commitar."
+            echo "Nada a commitar (data.json não mudou)."
           else
-            git commit -m "chore(data): update via issue"
+            git commit -m "chore(data): update via issue #${{ github.event.issue.number }}"
             git push
           fi
 
-      - name: Comentar sucesso
+      - name: Comentar sucesso na issue
         if: success()
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const issue_number = context.payload.issue ? context.payload.issue.number
-                                  : context.payload.comment ? context.payload.issue.number
-                                  : null;
-            const body = `✅ Dados publicados em data.json.\nAcesse: ${process.env.PAGES_URL}\n(Use **Atualizar agora** ou aguarde 30s)`;
-            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            const issue_number = context.payload.issue?.number;
+            const body = `✅ Dados publicados em **data.json**.\n\nAcesse: ${process.env.PAGES_URL}\n\nDica: na página, clique em **Atualizar agora** (ou aguarde ~30s).`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });
 
-      - name: Comentar falha
+      - name: Comentar falha na issue
         if: failure()
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const issue_number = context.payload.issue ? context.payload.issue.number
-                                  : context.payload.comment ? context.payload.issue.number
-                                  : null;
-            const body = `❌ Falha ao aplicar. Veja **Actions** para logs e edite a issue novamente.`;
-            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            const issue_number = context.payload.issue?.number;
+            const body = `❌ Falhou ao aplicar atualização.\nConfira os logs em **Actions** desta execução, corrija a issue (JSON/label) e edite novamente.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              body,
+            });
