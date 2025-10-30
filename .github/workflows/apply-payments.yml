@@ -11,7 +11,7 @@ permissions:
   issues: read
 
 env:
-  PAGES_URL: https://SEU_USUARIO.github.io/natal-familia-2025/
+  PAGES_URL: https://acaciocs.github.io/natal-familia-2025/
 
 jobs:
   add:
