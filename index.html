@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>🎄 Natal da Família 2025 — Acompanhamento</title>
+<style>
+:root{
+  /* Paleta Natalina (suave) */
+  --bg:#f7fafc;           /* quase branco */
+  --panel:#ffffff;        /* branco puro */
+  --border:#e5e7eb;       /* cinza clarinho */
+  --text:#1f2937;         /* cinza escuro */
+  --text-dim:#6b7280;     /* cinza médio */
+  --red:#c81e1e;          /* vermelho natalino (não exagerado) */
+  --green:#166534;        /* verde pinho */
+  --gold:#b98a00;         /* dourado sutil */
+  --accent:var(--green);
+  --radius:14px;
+  --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+*{ box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+body{
+  background:
+    linear-gradient(180deg,#fff, rgba(255,255,255,0.92) 30%, rgba(247,250,252,1) 100%),
+    url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"120\" viewBox=\"0 0 120 120\"><circle cx=\"10\" cy=\"10\" r=\"1\" fill=\"%23e5e7eb\"/><circle cx=\"80\" cy=\"50\" r=\"1\" fill=\"%23e5e7eb\"/><circle cx=\"30\" cy=\"90\" r=\"1\" fill=\"%23e5e7eb\"/></svg>');
+  color:var(--text);
+  font-family:var(--font); margin:0; padding:0;
+}
+.ribbon{
+  height:8px;
+  background: linear-gradient(90deg,var(--red),var(--gold),var(--green));
+}
+.wrap{ max-width:1200px; margin:0 auto; padding:18px; display:flex; flex-direction:column; gap:16px; }
+.header{
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+}
+.title{ font-size:22px; font-weight:900; color:var(--green); display:flex; gap:10px; align-items:center; }
+.title .badge{ background:linear-gradient(135deg,var(--gold),#ffd166); color:#4b3b00; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:800; }
+.sub{ color:var(--text-dim); font-size:14px; }
+.actions{ display:flex; align-items:center; gap:8px; }
+.btn{
+  background:var(--green); color:#fff; border:0; border-radius:10px; padding:10px 12px; font-weight:800; cursor:pointer;
+}
+.btn:hover{ filter:brightness(1.05); }
+.small{ color:var(--text-dim); font-size:12px; }
+
+.grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.card{
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px;
+  position:relative; overflow:hidden; box-shadow: 0 2px 10px rgba(0,0,0,.04);
+}
+.card:before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(135deg, transparent 60%, rgba(185,138,0,0.08));
+}
+.card h4{ margin:0; color:var(--text-dim); font-size:13px; font-weight:700; }
+.card .num{ font-size:24px; font-weight:900; margin-top:6px; color:var(--text); }
+
+.toggle-wrap{ display:flex; gap:8px; flex-wrap:wrap; }
+.toggle{ background:#fafafa; border:1px solid var(--border); color:var(--text); border-radius:10px; padding:8px 10px; font-weight:700; cursor:pointer; }
+.toggle:hover{ background:#f3f4f6; }
+.hidden{ display:none !important; }
+
+.cat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+.cat-card{
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+}
+.cat-card .head{ color:var(--red); font-weight:900; margin-bottom:6px; }
+.cat-line{ display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding:6px 0; }
+.cat-line .lbl{ color:var(--text-dim); }
+.cat-line .pos{ color:var(--green); font-weight:900; }
+.cat-line .neg{ color:var(--red); font-weight:900; }
+.cat-card .foot{ color:var(--text-dim); font-size:12px; margin-top:6px; }
+
+.table{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:12px; overflow-x:auto; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
+table{ width:100%; min-width:1000px; border-collapse:collapse; font-size:14px; }
+thead th{ text-align:left; color:var(--green); border-bottom:2px solid var(--border); padding:8px; }
+tbody td{ border-bottom:1px solid var(--border); padding:6px 8px; }
+tbody tr:hover{ background:#fafafa; }
+.center{ text-align:center; }
+.saldo.pos{ color:var(--green); font-weight:900; }
+.saldo.neg{ color:var(--red); font-weight:900; }
+</style>
+</head>
+<body>
+<div class="ribbon"></div>
+<div class="wrap">
+
+  <section class="header">
+    <div>
+      <div class="title">🎄 Natal da Família 2025 <span class="badge">vitrine</span></div>
+      <div class="sub" id="hdrLocal"></div>
+      <div class="sub" id="hdrPeriodo"></div>
+      <div class="small" id="lastUpdate"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnRefresh">Atualizar agora</button>
+      <div class="small">Auto: 30s</div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card"><h4>Adultos confirmados</h4><div class="num" id="adults">0</div></div>
+    <div class="card"><h4>Crianças confirmadas</h4><div class="num" id="kids">0</div></div>
+    <div class="card"><h4>Valor total previsto</h4><div class="num" id="totalPrev">R$ 0,00</div></div>
+    <div class="card"><h4>Valor por adulto</h4><div class="num" id="ppAdult">R$ 0,00</div></div>
+  </section>
+
+  <section class="toggle-wrap">
+    <button class="toggle" id="btnCost">Exibir detalhes de custos</button>
+    <button class="toggle" id="btnPay">Exibir detalhes de pagamentos</button>
+  </section>
+
+  <section>
+    <div class="cat-grid hidden" id="costGrid"></div>
+  </section>
+
+  <section>
+    <div class="table hidden" id="payWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Participante</th><th>Adulto(s)</th><th>Criança(s)</th>
+            <th>Entrada 20% (Div.)</th><th>Pago</th>
+            <th>Restante 80% (Div.)</th><th>Pago</th>
+            <th>Comes e Bebes (Div.)</th><th>Pago</th>
+            <th>Decoração (Div.)</th><th>Pago</th>
+            <th>Total Pago</th><th>Total Devido</th><th>Saldo</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const fmtBRL = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+let DATA = null;
+
+async function loadData(){
+  const res = await fetch('data.json?ts='+Date.now(), { cache: 'no-store' });
+  if(!res.ok) throw new Error('Falha ao carregar data.json');
+  DATA = await res.json();
+  document.getElementById('hdrLocal').textContent = DATA.eventInfo?.local || '';
+  document.getElementById('hdrPeriodo').textContent = DATA.eventInfo?.periodo || '';
+  document.getElementById('lastUpdate').textContent = 'Última atualização: ' + new Date().toLocaleString('pt-BR');
+}
+function totalAdults(){ return DATA.participants.reduce((s,p)=> s+(p.adultos||0),0); }
+function totalKids(){ return DATA.participants.reduce((s,p)=> s+(p.criancas||0),0); }
+function totalPrev(){ return Object.values(DATA.costs).reduce((a,c)=>a+(c.necessario_total||0),0); }
+function perAdult(cat){ const ad = Math.max(1,totalAdults()); return DATA.costs[cat].necessario_total/ad; }
+
+function renderSummary(){
+  document.getElementById('adults').textContent = totalAdults();
+  document.getElementById('kids').textContent = totalKids();
+  document.getElementById('totalPrev').textContent = fmtBRL(totalPrev());
+  document.getElementById('ppAdult').textContent = fmtBRL(totalPrev()/Math.max(1,totalAdults()));
+}
+function renderCosts(){
+  const grid = document.getElementById('costGrid'); grid.innerHTML='';
+  for(const key of ['entrada20','restante80','comesBebes','decoracao']){
+    const c = DATA.costs[key];
+    const arrec = DATA.participants.reduce((s,p)=> s+(p.pagamentos[key]||0),0);
+    const falta = (c.necessario_total||0) - arrec;
+    const div = document.createElement('div');
+    div.className='cat-card';
+    div.innerHTML = `
+      <div class="head">${c.nome}</div>
+      <div class="cat-line"><span class="lbl">Necessário</span><span>${fmtBRL(c.necessario_total||0)}</span></div>
+      <div class="cat-line"><span class="lbl">Arrecadado</span><span>${fmtBRL(arrec)}</span></div>
+      <div class="cat-line"><span class="lbl">Falta / Sobra</span><span class="${falta<=0?'pos':'neg'}">${fmtBRL(falta)}</span></div>
+      <div class="foot">≈ ${fmtBRL(perAdult(key))} por adulto</div>
+    `;
+    grid.appendChild(div);
+  }
+}
+function renderTable(){
+  const tb = document.getElementById('tbody'); tb.innerHTML='';
+  const share = {
+    entrada20: perAdult('entrada20'),
+    restante80: perAdult('restante80'),
+    comesBebes: perAdult('comesBebes'),
+    decoracao:  perAdult('decoracao')
+  };
+  DATA.participants.sort((a,b)=>a.id-b.id).forEach(p=>{
+    const divs = {
+      entrada20: share.entrada20 * (p.adultos||0),
+      restante80: share.restante80 * (p.adultos||0),
+      comesBebes: share.comesBebes * (p.adultos||0),
+      decoracao:  share.decoracao  * (p.adultos||0)
+    };
+    const pagos = p.pagamentos || {};
+    const totalPago = (pagos.entrada20||0)+(pagos.restante80||0)+(pagos.comesBebes||0)+(pagos.decoracao||0);
+    const totalDiv  = divs.entrada20+divs.restante80+divs.comesBebes+divs.decoracao;
+    const saldo = totalPago - totalDiv;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="center">${p.id}</td>
+      <td>${p.nome}</td>
+      <td class="center">${p.adultos||0}</td>
+      <td class="center">${p.criancas||0}</td>
+      <td>${fmtBRL(divs.entrada20)}</td><td>${fmtBRL(pagos.entrada20||0)}</td>
+      <td>${fmtBRL(divs.restante80)}</td><td>${fmtBRL(pagos.restante80||0)}</td>
+      <td>${fmtBRL(divs.comesBebes)}</td><td>${fmtBRL(pagos.comesBebes||0)}</td>
+      <td>${fmtBRL(divs.decoracao)}</td><td>${fmtBRL(pagos.decoracao||0)}</td>
+      <td>${fmtBRL(totalPago)}</td>
+      <td>${fmtBRL(totalDiv)}</td>
+      <td class="saldo ${saldo>=0?'pos':'neg'}">${fmtBRL(saldo)}</td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+function attachToggles(){
+  const btnCost = document.getElementById('btnCost');
+  const grid = document.getElementById('costGrid');
+  btnCost.addEventListener('click', ()=>{
+    const hidden = grid.classList.toggle('hidden');
+    btnCost.textContent = hidden ? 'Exibir detalhes de custos' : 'Ocultar detalhes de custos';
+  });
+  const btnPay = document.getElementById('btnPay');
+  const wrap = document.getElementById('payWrap');
+  btnPay.addEventListener('click', ()=>{
+    const hidden = wrap.classList.toggle('hidden');
+    btnPay.textContent = hidden ? 'Exibir detalhes de pagamentos' : 'Ocultar detalhes de pagamentos';
+  });
+}
+function attachRefresh(){
+  const doRefresh = async ()=>{
+    try{
+      await loadData();
+      renderSummary(); renderCosts(); renderTable();
+    }catch(e){ console.error(e); }
+  };
+  document.getElementById('btnRefresh').addEventListener('click', doRefresh);
+  setInterval(doRefresh, 30000);
+}
+
+(async function init(){
+  await loadData();
+  renderSummary(); renderCosts(); renderTable();
+  attachToggles(); attachRefresh();
+})();
+</script>
+</body>
+</html>

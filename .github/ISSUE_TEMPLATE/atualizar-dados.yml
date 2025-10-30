@@ -1,0 +1,39 @@
+name: "Atualizar dados (cole o JSON)"
+description: "Cole o conteúdo do data.json entre ```json ... ``` e crie a issue."
+title: "Atualização de dados - {{date}}"
+labels: ["admin-update"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Como usar**
+        1. No arquivo `data.json` (o mesmo formato usado no site), copie TODO o conteúdo.
+        2. Cole aqui dentro de um bloco:
+           ```json
+           { ...seu JSON... }
+           ```
+        3. Clique em **Submit new issue**. O GitHub Actions vai atualizar o `data.json` no repositório.
+  - type: textarea
+    id: json_data
+    attributes:
+      label: Cole aqui o seu `data.json` (entre ```json ... ```)
+      description: |
+        Dica: se preferir, edite o JSON direto no navegador e depois cole aqui.
+      placeholder: |
+        ```json
+        {
+          "eventInfo": { "titulo": "Natal da Família 2025", "local": "Sítio Nature Club", "periodo": "Entrada: 23/12 • Saída: 26/12", "observacoes": ["Valores ajustam conforme confirmações."] },
+          "costs": {
+            "entrada20":  { "nome": "Entrada 20% do Sítio", "necessario_total": 800 },
+            "restante80": { "nome": "Restante 80% do Sítio", "necessario_total": 3200 },
+            "comesBebes": { "nome": "Comes e Bebes (comida + refri)", "necessario_total": 3000 },
+            "decoracao":  { "nome": "Decoração", "necessario_total": 350 }
+          },
+          "participants": [
+            { "id": 1, "nome": "Juraci",   "adultos": 1, "criancas": 0, "pagamentos": {"entrada20":0,"restante80":0,"comesBebes":0,"decoracao":0} },
+            { "id": 2, "nome": "Denílson", "adultos": 1, "criancas": 0, "pagamentos": {"entrada20":0,"restante80":0,"comesBebes":0,"decoracao":0} }
+          ]
+        }
+        ```
+    validations:
+      required: true

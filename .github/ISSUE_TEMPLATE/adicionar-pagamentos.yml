@@ -1,0 +1,26 @@
+name: "Adicionar pagamento(s) rápido(s)"
+description: "Informe um ou mais pagamentos no formato: nome|categoria|valor (ou id|categoria|valor)"
+title: "Pagamentos rápidos - {{date}}"
+labels: ["add-payment"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Como usar**
+        - Categorias válidas: `entrada20`, `restante80`, `comesBebes`, `decoracao`
+        - Você pode identificar a pessoa por **nome** (ignora acentos/maiúsculas) ou por **id** (número).
+        - Formatos aceitos (um por linha):
+          - `Nome|categoria|valor`  → ex.: `Juraci|entrada20|100`
+          - `id|categoria|valor`    → ex.: `1|restante80|150,50`
+        - Separe **cada pagamento** em uma **linha**.
+  - type: textarea
+    id: linhas
+    attributes:
+      label: Lista de pagamentos
+      description: "Um pagamento por linha."
+      placeholder: |
+        Juraci|entrada20|100
+        2|restante80|150,50
+        Fátima|comesBebes|75
+    validations:
+      required: true
